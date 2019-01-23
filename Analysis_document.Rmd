@@ -1,0 +1,1792 @@
+---
+title: "SL project"
+author: Nicholas Missineo, Elisa Pirotta, Enzo Benincasa
+date: "18/01/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduzione
+
+Oggigiorno tutto il mondo soffre di una profonda crisi legata all'ambiente. 
+Ovunque si possono vedere le conseguenze disastrose di nazioni che distruggono il proprio suolo, non esiste paese in cui il naturale equilibrio del paesaggio terrestre sia rimasto inalterato.  
+Il comportamento irresponsabile di Stati, imprese, comunità e singole persone abbraccia mortalmente la natura in un'era in cui il consumo è sfrenato e l'inquinamento lo segue di pari passo.  Sembra che l'unico valido obiettivo per una società di business sia fare profitto senza pensare alle conseguenze dei propri gesti e senza utilizzare sapientemente le proprie energie.   
+Quella descritta è la fotografia attuale dell'ecosistema in cui siamo inseriti, dell'ambiente di cui tutti, almeno una volta, ci siamo disinteressati. C'è bisogno di un'inversione di tendenza per arrestare questo declino e non è troppo tardi per impegnarsi e fare in modo che tale impegno sia sempre crescente.   
+Stati, imprese e comunità si sono già mossi a favore di un pensiero più green. Essere green assume quindi una duplice valenza: ecologica ed economica. Rispettare l'equilibrio dell'ecosistema, salvaguardarlo e unire tali missioni ecologiche con l'obiettivo economico dei profitti è ciò che si propongono di fare aziende di tipo benefit corporation.
+Si compiono così i primi passi verso una delle più importanti tendenze dei nostri tempi: il movimento crescente di persone che usano il proprio business come una forza per il bene comune.   
+Così come le imprese, anche ogni singola persona può contribuire alla salvaguardia dell'ambiente. Il modo è semplice e al passo con i tempi e con le esigenze del consumatore, non costa nessuna fatica e non vi è nessun dispendio economico. Qual è questo modo?  
+_Esiste un modo per essere più green gratuitamente?_
+Molte aziende donano una piccola parte dei propri ricavi a fini ecologici, ma c'è qualche azienda che permette a tutti di farlo gratuitamente?  
+La risposta è si: **ECOSIA**.  
+Ecosia è un motore di ricerca, fondato da _Christian Kroll_ il 7 Dicembre 2009, il quale dichiara di donare l'80% dei proventi ricavati dalla pubblicità online per sostegno a programmi di riforestazione.  
+Il fatto che sia uno strumento facilmente reperibile da tutti e considerato il numero di ricerche in internet che ciascun individuo esegue ogni giorno, tale soluzione è la migliore da proporre.  
+Come con tutti i motori di ricerca, il fatturato di Ecosia si genera tramite i proventi pubblicitari delle ricerche effettuate dagli utenti e, grazie alla tecnologia sviluppata da Yahoo, i risultati della ricerca con Ecosia includono pubblicità che generano guadagni attraverso i clic degli utenti stessi. Inoltre, nelle ricerche compaiono dei link affiliati, denominati *Ecolinks*, che consentono agli utenti di generare donazioni attraverso gli acquisti online.  
+Inoltre Ecosia ha dichiarato di avere nel tempo fornito lavoro a circa 30.000 persone grazie ad i suoi progetti di riforestazione.  
+Nel corso di questo report sono stati analizzati i dati ecosia ottenuti tramite social (Twitter e Instagram), dati ottenuti dal sito di ecosia (in particolare abbiamo ricavato i financial report) e dati ottenuti sull' web al fine di mostrare la bontà di Ecosia e le sue previsioni per il prossimo futuro.  
+La nostra ispirazione deriva dal nostro *essere green* visto che teniamo molto all'ambiente; mentre cercavamo su internet come poter essere green gratuitamente è apparso un blog in cui era presente il link di ECOSIA!
+
+## Analisi
+
+### Dataset
+
+Il dataset è stato creato manualmente recuperando i dati dai report finanziari disponibili sul sito ecosia.org, è composto da 64 osservazioni e 35 variabili. Tra queste troviamo tutte le voci di un comune *financial report* tra cui income, operative cost, spreading the word e reserves a cui vanno aggiunti i dati riguardanti il numero di alberi piantati per ogni stato.  
+Alcune variabili possono mostrare degli NA poichè non è stato possibile reperire tali dati.
+
+Durante il corso delle analisi opterò per due metodi previsivi:
+
+* Unobservable component model 
+* Sliding winows with GLS
+
+Analizzeremo 4 variabili in particolare (tutte sottoforma di dati mensili):
+
+* *Numero di alberi piantati*
+* *Income*
+* *Kpi_communication*, è il rapporto tra *spreading the word* (soldi speri per la comunicazione) e *Income* il quale è un *Key Performance indicator* che descrive la proporzione di soldi spesi dall'azienda in comunicazione.
+* *kpi_CostForTree*, è il rapporto tra *Numbero di alberi piantati* e *Investiment on tree planting*(soldi spesi effettivamente per piantare gli alberi) il quale è un *Key Performance indicator* che descrive il numero di alberi che si possono piantare per ogni euro investito.
+
+Per tutte e 4 le variabili, durante l'analisi mediante modello *UCM* opteremo per il seguente procedimento:
+
+* Divisione in train (prime 58 osservazioni) e test(da 59 a 64).
+* Stima modello UCM tramite SSModel con la componente *trend* sottoforma di RW con drift e la componente *stagionalità a dummy stocastiche* mensile/trimestrale (questo verrà deciso sulla base della variabile analizzata, il motivo della scelta deriva da fattori esogeni come ad esempio le politiche d'investimento dell'azienda e le previsioni dell'azienda che possono essere fatte su base mensile o trimestrale).
+* Si esegue il fitting del modello utilizzando come parametri ottimi dei parametri basati sulla varianza della serie storica in analisi(vedi *The unobservable components model* by A.C.Harvey 1989).
+* Si esegue lo *smoothing* e l'analisi dei residui per individuare la presenza di eventuali *outlier* o cambi di livello/pendenza ed, in quest'ultimo caso, viene creata una variabile ad-hoc per la stima di tale evento.
+* Si replica la stima con la nuova variabile aggiunta e si stima la sua significatività. Nel caso fosse significativa si stima nuovamente il modello aggiungendo al posto della matrice di varianze e covarianze i valori di tali matrici ottenuti dalla stima precedente o, nel caso non si sia sicuri della validità di tali stime, si inseriscono *condizioni diffuse* (valore 10^7) il quale sta ad indicare completa ignoranza rispetto al possibile valore che può assumere.
+* Si aggiungono 6 NA in fondo al vettore di train di modo che quei valori saranno stimati tramite lo smoothing (saranno le nostre previsioni).
+* Dopo la stima di tali osservazioni (attuali previsioni dal periodo 59 a 64), calcoleremo l' RMSE confrontando tali valori con i dati osservati di test.
+* Per la previsione delle osservazioni da 65 a 70 (vere previsioni), reiteriamo lo stesso procedimento.
+
+Per tutte e 4 le variabili, durante l'analisi mediante modello *Sliding window* opteremo per il seguente procedimento:
+
+* Viene eseguito il test Ljung-Box test per verificare la presenza di autocorrelazione della serie storica
+* Divisione in train (prime 58 osservazioni) e test(da 59 a 64).
+* Viene creata la matrice dei ritardi di Y fino a 12 periodi tale per cui la prima colonna rappresenti Yt-1, la seconda Yt-2 ecc.
+* Viene calcolato un modello lineare di prova per verificare la significatività delle variabili mediante il metodo di *Bonferroni* ed *Holm*. A tale procedimento tipicamente solo la variabile precedente viene giudicata significativa, dalla letteratura però per applicare questo metodo viene consigliato di utilizzare almeno 4 osservazioni precedenti (Vedi *Machine Learning Strategies for Time Series Forecasting* by Gianluca Bontempi,Souhaib Ben Taieb,Yann-Aël Le Borgne).
+* Creando una matrice di 12 ritardi dobbiamo, ovviamente, gettare via le prime 12 osservazioni.
+* Il procedimento consiste nell'eseguire previsioni ad un passo ed utilizzare ricorsivamente tali valori ottenuti per prevedere la variabile successiva. Questo metodo agli occhi di uno statistico può sembrare poco ortodosso poichè tende a far esplodere l'errore (mostrerò di volta in volta come i residui, tramite un *qqplot* non siano normali) però la logica che si utilizza in questo approccio è simile a quella applicata tramite *Media mobile* nell'analisi dell'analisi di serie storiche moderna. Tale metodo non prevede né l'utilizzo di componenti stagionali né cicliche. Le nostre previsioni saranno abbastanza *liscie*.
+* Una volta ottenute le previsioni per il periodo 59-64 calcoliamo l'RMSE.
+* Reiteriamo lo stesso procedimento per le osservazioni da 65 a 70.
+
+Il confronto tra il metodo *UCM* e quello *Sliding Window with GLS* verrà applicato tramite l'RMSE e la regola decisionale sarà la seguente: Il metodo che presenta RMSE più piccolo per le previsioni da 59 a 64 verrà scelto.
+
+## Analisi variabile INCOME
+
+#### Modello UCM 
+```{r,warning = FALSE, error=FALSE,message = FALSE}
+setwd("C:\\Users\\Utente\\Desktop\\Univerisità\\Statistical learning\\Ecosia\\Financial report\\immagini")
+#SSM
+library(caret)
+library(KFAS)
+library(ggplot2)
+ecosia<-read.csv("ecosia.csv",sep=";")
+attach(ecosia)
+#Partiziono il dataset
+total.income.this.month<-ts(Total.income.this.month)
+train.income<-total.income.this.month[1:58]
+test.income<-total.income.this.month[59:64]
+
+#Creiamo un vettore data che parte l' 1 Gennaio 2013 e finisce il primo Ottobre 2018 
+dt1<-as.Date("2013-07-01")
+date <- seq(dt1, length = 64, by = "month")
+
+#Modello UCM con componente trend e stagionale mensile
+mod1<-SSModel(train.income~SSMtrend(2,list(0,NA))+SSMseasonal(12,NA,"dummy"),H=NA)
+
+#Funzione update per fissare i parametri ottimi al fine di velocizzare
+#e migliorare la stima
+update1<-function(pars,model){
+  # matrice di covarianza dei disturbi
+  model$Q[1,1,1]<-exp(log(var(train.income))/100)
+  model$Q[2,2,1]<-exp(pars[1])  #varianza slope
+  model$Q[3,3,1]<-exp(pars[2])  #varianza stagionalità
+  # varianza dell'errore di osservazione
+  model$H[1,1,1]<-exp(pars[3])  #varianza errore dell' osservazione
+  model
+}
+
+fit1 <- fitSSM(mod1,c(exp(log(var(train.income))/100),exp(log(var(train.income))/100), exp(log(var(train.income))/10)), update1)
+#Converge?
+fit1$optim.out$convergence
+
+#Parametri stimati
+dsm1 <- KFS(fit1$model, smoothing = c("state","disturbance","signal"))
+smo1<-KFS(fit1$model,smoothing="disturbance")
+are1 <- rstandard(smo1, "state")
+ggplot()+
+  geom_line(aes(x=date[1:58], y=are1[,"level"]),col="#FF3300")+
+  labs(title = "Residual of total income per months",caption = "Ecosia source") +
+  ylab("Residuals") + xlab("Date")
+
+#Quali residui sono anomali?
+ndx<-which.max(abs(are1[,"level"]));ndx
+#Generiamo i residui ausiliari per costruire i t-test al fine di identificare un outlier additivo. Creiamo una variabile dummy per il residuo ausiliario più estremo.
+
+smo1 = KFS(fit1$model, smoothing=c("state","disturbance","sigma"))
+#state:proiezione var di stato su y
+#disturbance : proiezione disturbo delle variabili di stato sulle y
+#sigma : proiezione varianza delle variabili di stato sulle y
+
+#TEST - c'è un cambio di livello improvviso?
+which(abs(are1[,"level"]/sd(are1[,"level"]))>2.57) 
+
+#Nella pos 44 abbiamo un problema, si è creato un dislivello.
+#Cerchiamo di correggere il tutto creando una funzione gradino
+
+#Creo la variabile step
+n=length(train.income)
+step = train.income
+step[] = 0  #scriviamo sulla parte dati e non data
+step[(ndx+1):n] = 1;step
+
+#Stimiamo il modello UCM con in aggiunta la variabile step
+mod2 <- SSModel  ( train.income~ 0 + step + SSMtrend(2,list(NA,NA))
+                   +SSMseasonal(12,NA,"dummy"),H=NA)
+update2<-function(pars,model){
+  # matrice di covarianza dei disturbi
+  model$Q[1,1,1]<-exp(log(var(train.income))/100)
+  model$Q[2,2,1]<-exp(pars[1])  #varianza slope
+  model$Q[3,3,1]<-exp(pars[2])  #varianza stagionalità
+  # varianza dell'errore di osservazione
+  model$H[1,1,1]<-exp(pars[3])  #varianza errore dell' osservazione
+  model
+}
+fit2 = fitSSM(mod2,c(fit1$optim.out$par,2.5),update2)
+smo2 = KFS(fit2$model,smoothing="state") #calcola gli eta.hat t/n
+fit2$optim.out$convergence #Raggiunge convergenza
+
+#La variabile combo è il prodotto tra la variabile step e la 
+#sua stima
+combo<-step*smo2$alphahat[,"step"]
+ggplot()+
+  geom_line(aes(x=date[1:58], y=train.income),col="#000000")+
+  geom_line(aes(x=date[1:58], y=smo2$alphahat[,"level"]),col="#3366FF")+
+  geom_line(aes(x=date[1:58],y=smo2$alphahat[,"level"]+combo),col="#FF3300")+
+  labs(title = "Fit of the time serie",caption = "Ecosia source") +
+  ylab("Value") + xlab("Date")
+
+#Smoothing
+smo2$alphahat[n,"step"] / sqrt(smo2$V[1,1,n]) #test t, lo scalino è molto significativo
+
+#Aggiungo 6 NA alla fine della serie e della variabile step
+#al fine di poter eseguire previsioni
+train.income<-c(train.income,rep(NA,6))
+train.income<-as.numeric(train.income)
+step<-c(step,rep(1,6))
+
+#Ho messo per lo slope una varianza pari a 1.295959 che è il valore 
+#della matrice di varianze e covarianze corrispondente allo slope
+#nel modello precedente.
+#Per l' errore ho messo condizioni diffuse (varianza pari a 10^7)
+#poichè non si hanno informazioni a priori.
+mod3<-SSModel(train.income~0+step+SSMtrend(2,list(0,1.295959))
+              +SSMseasonal(12,0,"dummy"),H=10000000)
+
+fit3 <- fitSSM(mod3, inits = c(0, 0, 0), method = "BFGS")
+
+smo3<-KFS(mod3, filtering = c("state", "signal", "disturbance"), smoothing = c("state", "signal","disturbance", "none"))
+
+#Previsioni / stima del test set
+a<-smo3$m
+new.dt1<-as.Date("2013-07-01")
+new.date <- seq(dt1, length = 70, by = "month")
+
+plot(train.income,type="l")
+lines(a,add=T,col="red")
+
+new.a<-a[59:64]
+new.income<-train.income
+new.income[59:64]<-new.a
+ggplot()+
+  geom_line(aes(x=date, y=new.income),col="#000000")+
+  geom_line(aes(x=date,y=total.income.this.month,col="#3366FF"))+
+  labs(title = "Fit of the time serie",caption = "Ecosia source") +
+  ylab("Value") + xlab("Date")
+
+RMSE<-sqrt(sum((new.a - total.income.this.month[59:64])^2));RMSE
+```
+
+#### Modello Sliding Window with GLS
+
+```{r,warning = FALSE,error = FALSE,message=FALSE}
+rm(list=ls())
+setwd("C:\\Users\\Utente\\Desktop\\Univerisità\\Statistical learning\\Ecosia\\Financial report\\immagini")
+library(tseries)
+library(nlme)
+library(caret)
+library(forecast)
+ecosia<-read.csv("ecosia.csv",sep=";")
+attach(ecosia)
+#devtools::install_github("ellisp/forecastxgb-r-package/pkg") # CRAN release still to come
+#library(forecastxgb)
+total.income<-ts(ecosia$Total.income.this.month,frequency = 12)
+Box.test(total.income, type="Ljung-Box")
+#I dati non sono distribuiti indipendentemente,c'è autocorrelazione
+
+#UTILIZZO LE OSSERVAZIONI DA 1 A 64
+
+#Faccio previsione per le osservazioni 59-64 al fine di vedere se 
+#riesco a fittare bene il modello
+train.income<-ts(total.income[1:52])
+test.income<-ts(total.income[53:58])
+
+#Creo una matrice di ritardi : rolling window
+d2<-matrix(0,nrow=35,ncol=12)
+
+for(i in 1:12){
+  vettore<-vector()
+  vettore<-ecosia$Total.income.this.month[(12+i):(46+i)]
+  d2[,i]<-vettore
+}
+
+dati<-as.data.frame(d2)
+dati.train<-dati[(1:28),]
+dati.test<-dati[(29:34),]
+
+income<-ecosia$Total.income.this.month
+train.income<-income[25:52]
+dati.train$train.income<-train.income
+test.income<-income[53:58]
+dati.test$test.income<-test.income
+
+modello.prova<-lm(train.income~.,data = dati.train)
+summ<-summary(lm(train.income~.,data = dati.train));summ
+
+#Con quale valore del pvalue lo confronto?
+#Se lo confrontasis con la misura di Bonferroni allora avrei che 
+#rifiuto Ho:bi = 0 nel caso in cui pvalue = alpha/m dove m è il 
+#numero delle HP.
+
+#Bonferroni
+alpha=0.05
+m=13
+p.value<-summ$coefficients[,4]
+setR = which(p.value <= alpha/m);setR
+
+#Holm
+p.value<-sort(p.value,decreasing = F)
+for(i in 1:13){
+  if(p.value[i]< (alpha/i)){
+    print(i)
+  }
+  else{
+    break
+  }
+}
+
+#Solo il primo pvalue risulta essere minore, il quale corrisponde
+#alla variabile V13
+
+#La variabile più significativa è l'ultimo periodo
+
+fit<-gls(train.income~.,correlation = corAR1(form = ~3),data=dati.train[,c(11,12,13)])
+
+qqnorm(fit$residuals,main = "Normal Q-Q Plot")
+qqline(fit$residuals, datax = FALSE, distribution = qnorm,
+       probs = c(0.25, 0.75), qtype = 7)
+prev<-predict(fit, newdata = dati.test,method="gls")
+
+prev
+plot(test.income,type="l",ylim = c(600000,1200000))
+lines(prev,col="red")
+
+#l'idea è quella di creare il seguente modello:
+"
+Yt+1 = Yt-1 + Yt-2 + Yt-3
+Yt+2 = Yt + Yt-1 + Yt-2
+ecc.
+"
+
+d2.new<-dati.test[,c(10,11,12)]
+d2.new$income<-ecosia$Total.income.this.month[53:58]
+
+m0<-gls(income~.,correlation = corAR1(form = ~3),data=d2.new)
+pred<-predict(m0, newdata = d2.new);pred
+
+d3.new<-dati.test[,c(11,12)]
+d3.new$V13<-ecosia$Total.income.this.month[53:58]
+d3.new$pred<-pred
+
+m1<-gls(pred~.,correlation=corAR1(form = ~3),data = d3.new)
+pred1<-predict(m1, newdata = d3.new,method="gls")
+pred1
+
+d4.new<-as.data.frame(dati.test[,12])
+d4.new$V13<-ecosia$Total.income.this.month[53:58]
+d4.new$pred<-pred
+d4.new$pred1<-pred1
+
+m2<-gls(pred1~.,correlation=corAR1(form = ~3),data = d4.new)
+pred2<-predict(m2, newdata = d4.new,method="gls");pred2
+
+d5.new<-d4.new[,c(2,3,4)]
+d5.new$pred2<-pred2
+
+m3<-gls(pred2~.,correlation=corAR1(form = ~3),data = d5.new)
+pred3<-predict(m3, newdata = d5.new,method="gls");pred3
+
+d6.new<-d5.new[,c(2,3,4)]
+d6.new$pred3<-pred3
+
+m4<-gls(pred3~.,correlation=corAR1(form = ~3),data = d6.new)
+pred4<-predict(m4, newdata = d6.new,method="gls");pred4
+
+d7.new<-d6.new[,c(2,3,4)]
+d7.new$pred4<-pred4
+
+m5<-gls(pred4~.,correlation=corAR1(form = ~3),data = d7.new)
+qqnorm(m5$residuals,main = "Normal Q-Q Plot")
+qqline(m5$residuals, datax = FALSE, distribution = qnorm,
+       probs = c(0.25, 0.75), qtype = 7)
+pred5<-predict(m5, newdata = d7.new,method="gls");pred5
+
+#Pred5 è il vettore di previsioni per t=59,...,64
+
+vettore.previsioni.gls.64<-ecosia$Total.income.this.month[1:58]
+vettore.previsioni.gls.64<-c(vettore.previsioni.gls.64,pred5)
+vettore.previsioni.gls.64<-as.numeric(vettore.previsioni.gls.64)
+
+RMSE<-sqrt(sum((pred5-ecosia$Total.income.this.month[59:64])^2));RMSE
+```
+
+Il modello con RMSE minore è il modello *Sliding Window with GLS* dunque utilizzeremo lui per applicare le previsioni finali.
+
+```{r,warning = FALSE,error = FALSE,message=FALSE}
+train.income<-ts(total.income[1:50])
+test.income<-ts(total.income[51:64])
+
+d<-matrix(0,nrow=41,ncol=12)
+
+for(i in 1:12){
+  vettore<-vector()
+  vettore<-ecosia$Total.income.this.month[(12+i):(52+i)]
+  d[,i]<-vettore
+}
+
+
+dati<-as.data.frame(d)
+dati.train<-dati[(1:34),]
+dati.test<-dati[(35:40),]
+
+income<-ecosia$Total.income.this.month
+train.income<-income[25:58]
+dati.train$train.income<-train.income
+test.income<-income[53:58]
+dati.test$test.income<-test.income
+
+
+fit<-gls(train.income~.,correlation = corAR1(form = ~3),data=dati.train)
+
+qqnorm(fit$residuals,main = "Normal Q-Q Plot")
+qqline(fit$residuals, datax = FALSE, distribution = qnorm,
+       probs = c(0.25, 0.75), qtype = 7)
+prev1<-predict(fit, newdata = dati.test,method="gls")
+
+prev1
+plot(test.income,type="l",ylim = c(600000,900000))
+lines(prev1,col="red")
+
+#l'idea è quella di creare il seguente modello:
+"
+Yt+1 = Yt-1 + Yt-2 + Yt-3
+Yt+2 = Yt + Yt-1 + Yt-2
+ecc.
+"
+
+dati2.new<-dati.test[,c(10,11,12)]
+dati2.new$income<-ecosia$Total.income.this.month[53:58]
+
+
+library(nlme)
+library(MASS)
+m0<-gls(income~.,correlation = corAR1(form = ~3),data=dati2.new)
+prev<-predict(m0, newdata = dati2.new);prev
+
+dati3.new<-dati.test[,c(11,12)]
+dati3.new$V13<-ecosia$Total.income.this.month[53:58]
+dati3.new$prev<-prev
+
+m1<-gls(prev~.,correlation=corAR1(form = ~3),data = dati3.new)
+prev1<-predict(m1, newdata = dati3.new,method="gls")
+prev1
+
+dati4.new<-as.data.frame(dati.test[,12])
+dati4.new$V13<-ecosia$Total.income.this.month[53:58]
+dati4.new$prev<-prev
+dati4.new$prev1<-prev1
+
+m2<-gls(prev1~.,correlation=corAR1(form = ~3),data = dati4.new)
+prev2<-predict(m2, newdata = dati4.new,method="gls");prev2
+
+dati5.new<-dati4.new[,c(2,3,4)]
+dati5.new$prev2<-prev2
+
+m3<-gls(prev2~.,correlation=corAR1(form = ~3),data = dati5.new)
+prev3<-predict(m3, newdata = dati5.new,method="gls");prev3
+
+dati6.new<-dati5.new[,c(2,3,4)]
+dati6.new$prev3<-prev3
+
+m4<-gls(prev3~.,correlation=corAR1(form = ~3),data = dati6.new)
+prev4<-predict(m4, newdata = dati6.new,method="gls");prev4
+
+dati7.new<-dati6.new[,c(2,3,4)]
+dati7.new$prev4<-prev4
+
+m5<-gls(prev4~.,correlation=corAR1(form = ~3),data = dati7.new)
+qqnorm(m5$residuals,main = "Normal Q-Q Plot")
+qqline(m5$residuals, datax = FALSE, distribution = qnorm,
+       probs = c(0.25, 0.75), qtype = 7)
+prev5<-predict(m5, newdata = dati7.new,method="gls");prev5
+
+#Prev5 ha le previsioni finali
+
+vettore.previsioni.gls<-ecosia$Total.income.this.month
+vettore.previsioni.gls<-c(vettore.previsioni.gls,prev5)
+
+
+new.d<-matrix(0,ncol=12,nrow=41)
+new.d<-as.data.frame(new.d)
+for(i in 1:12){
+  vettore<-vector()
+  vettore<-vettore.previsioni.gls[(17+i):(57+i)]
+  new.d[,i]<-vettore
+}
+new.d$prev<-vettore.previsioni.gls[30:70]
+
+m6<-gls(prev~.,correlation=corAR1(),data = new.d)
+qqnorm(m6$residuals,main = "Normal Q-Q Plot")
+qqline(m6$residuals, datax = FALSE, distribution = qnorm,
+       probs = c(0.25, 0.75), qtype = 7)
+
+plot(vettore.previsioni.gls,type="l")
+abline(v=64,col="red")
+
+vettore.previsioni.gls
+```
+```{r,warning = FALSE,error = FALSE,message=FALSE}
+new.dt1<-as.Date("2013-07-01")
+new.date <- seq(new.dt1, length = 70, by = "month")
+V2.final<-c(744079.8,782187.2,719959.6,780834.8,764697.9,729088.6)
+V2.final<-c(total.income[64],V2.final)
+
+ggplot()+
+  geom_line(aes(x=new.date[1:64], y=total.income),col="black")+
+  geom_line(aes(x=new.date[64:70], y=V2.final),col="red")+
+  labs(title = "Income of Ecosia",caption = "Ecosia source")+
+  xlab("Date")+ ylab("Value in euros")+
+  scale_fill_discrete(name="Factors",aes())+
+  theme(
+        panel.background = element_rect(fill = "transparent", colour = "#33FF66")) 
+```
+
+
+
+## Analisi variabile Total Number of Tree
+
+#### Modello UCM 
+
+```{r,warning = FALSE,error = FALSE,message=FALSE}
+rm(list=ls())
+library(caret)
+library(KFAS)
+library(ggplot2)
+library(rucm)
+ecosia<-read.csv("ecosia.csv",sep=";")
+
+#Creo un vettore data
+dt1<-as.Date("2013-07-01")
+date <- seq(dt1, length = 64, by = "month")
+
+#Partiziono il dataset
+total.number.tree<-ts(Number.tree.planted)
+train.tree<-total.number.tree[1:54]
+test.tree<-total.number.tree[55:64]
+
+plot(total.number.tree)
+
+mod1<-SSModel(train.tree~0+SSMtrend(2,list(0,NA))+SSMseasonal(3,NA,"dummy"),H=NA)
+
+#Funzione update per fissare i parametri ottimi al fine di velocizzare
+#e migliorare la stima
+update1<-function(pars,model){
+  # matrice di covarianza dei disturbi
+  model$Q[1,1,1]<-exp(log(var(train.tree))/100)
+  model$Q[2,2,1]<-exp(pars[1])  #varianza slope
+  model$Q[3,3,1]<-exp(pars[2])  #varianza stagionalità
+  # varianza dell'errore di osservazione
+  model$H[1,1,1]<-exp(pars[3])  #varianza errore dell' osservazione
+  model
+}
+
+fit1 <- fitSSM(mod1, c(exp(log(var(train.tree))/100),exp(log(var(train.tree))/100), exp(log(var(train.tree))/10)), update1)
+#Converge?
+fit1$optim.out$convergence #Si converge
+
+#Parametri stimati
+dsm1 <- KFS(fit1$model, smoothing = c("state","disturbance","signal"))
+smo1<-KFS(fit1$model,smoothing="disturbance")
+are1 <- rstandard(smo1, "state")
+
+ggplot()+
+  geom_line(aes(x=date[1:54], y=are1[,"level"]),col="#FF3300")+
+  labs(title = "Residual of total income per months",caption = "Ecosia source") +
+  ylab("Residuals") + xlab("Date")
+
+#Quali residui sono anomali?
+ndx<-which.max(abs(are1[,"level"]));ndx
+
+#Generare i residui ausiliari per costruire i t-test per identificare un outlier additivo. Creare una
+#variabile dummy per il residuo ausiliario più estremo.dsm1 <- KFS(fit1$model, smoothing = "disturbance")
+
+#costruiamo il trend smoothed (prima devo calcolare il filtro di Kalman)
+smo1 = KFS(fit1$model, smoothing=c("state","disturbance","sigma"))
+#state:proiezione var di stato su y
+#disturbance : proiezione disturbo delle variabili di stato sulle y
+#sigma : proiezione varianza delle variabili di stato sulle y
+
+#TEST - c'è un cambio di livello improvviso?
+which(abs(are1[,"level"]/sd(are1[,"level"]))>2.57) 
+
+ #In 45 inizia ad esserci un cambio di pendenza significativo
+#Nella pos 44 abbiamo un problema, si è creato un dislivello.
+#Cerchiamo di correggere il tutto creando una funzione gradino
+
+#Creo la variabile step
+n=length(train.tree)
+step = train.tree
+step[1:(ndx+1)]<-0
+#scriviamo sulla parte dati e non data
+step[(ndx+1):n] = 1;step
+
+#Stimiamo il modello UCM con in aggiunta la variabile step
+mod2 <- SSModel  ( train.tree~ 0 + step + SSMtrend(2,list(NA,NA))
+                   +SSMseasonal(3,NA,"dummy"),H=NA)
+
+update2<-function(pars,model){
+  # matrice di covarianza dei disturbi
+  model$Q[1,1,1]<-exp(log(var(train.tree))/100)
+  model$Q[2,2,1]<-exp(pars[1])  #varianza slope
+  model$Q[3,3,1]<-exp(pars[2])  #varianza stagionalità
+  # varianza dell'errore di osservazione
+  model$H[1,1,1]<-exp(pars[3])  #varianza errore dell' osservazione
+  model
+}
+
+fit2 = fitSSM(mod2,c(fit1$optim.out$par,2.5),update2)
+
+smo2 = KFS(fit2$model,smoothing="state") #calcola gli eta.hat t/n
+smo2$alphahat[,"step"]
+fit2$optim.out$convergence
+
+#La variabile combo è il prodotto tra la variabile step e la 
+#sua stima
+combo<-step*smo2$alphahat[,"step"]
+
+ggplot()+
+  geom_line(aes(x=date[1:54], y=train.tree),col="#000000")+
+  geom_line(aes(x=date[1:54], y=smo2$alphahat[,"level"]),col="#3366FF")+
+  geom_line(aes(x=date[1:54], y=smo2$alphahat[,"level"]+combo),col="#FF3300")+
+  labs(title = "Fit of the time serie",caption = "Ecosia source") +
+  ylab("Value") + xlab("Date")
+
+#Smoothing
+smo2$alphahat[n,"step"] / sqrt(smo2$V[1,1,n]) #test t, la stepa è molto significativo
+
+#Aggiungo 6 NA alla fine della serie e della variabile step
+#al fine di poter eseguire previsioni
+train.tree<-c(train.tree,rep(NA,10))
+train.tree<-as.numeric(train.tree)
+step<-c(step,rep(1,10))   #Gli aggiungo i valori significativi
+
+fit1$model$Q
+
+#Ho messo per il livello una varianza pari a 1.314255 che è il valore 
+#della matrice di varianze e covarianze corrispondente al livello
+#nel modello precedente.
+#Inserisco condizioni diffuse per lo slope e 0.0004745618 per la matrice
+#delle var e covar dell'errore
+#Per l' errore ho messo condizioni diffuse (varianza pari a 10^7)
+#poichè non si hanno informazioni a priori.
+mod3<-SSModel(train.tree~0+step+SSMtrend(2,list(0,1.314255))
+              +SSMseasonal(4,10^4,"dummy"),H=0.004)
+
+fit3 <- fitSSM(mod3, inits = c(0, 0, 0), method = "BFGS")
+fit3$optim.out$convergence  #converge
+smo3<-KFS(mod3, filtering = c("state", "signal", "disturbance"), smoothing = c("state", "signal","disturbance", "none"))
+
+#Previsioni / stima del test set
+a<-smo3$m
+new.dt1<-as.Date("2013-07-01")
+new.date <- seq(dt1, length = 64, by = "month")
+
+plot(train.tree,type="l",ylim=c(0,5*10^6))
+lines(a,col="red")
+
+
+new.a<-a[55:64]
+new.tree<-train.tree
+new.tree[55:64]<-new.a
+plot(new.tree,type="l",ylim=c(0,5*10^6))
+abline(v=54,col="red")
+lines(total.number.tree,col="blue")
+
+#Da 59 a 64 SSM
+v1<-c(2352502,2571000,3017077,2379814,2606638,2825136)
+
+RMSE<-sqrt(sum((v1-ecosia$Number.tree.planted[59:64])^2));RMSE
+
+```
+
+#### Modello Sliding Window with GLS
+
+```{r,warning = FALSE,error = FALSE,message=FALSE}
+library(tseries)
+library(nlme)
+library(caret)
+library(forecast)
+ecosia<-read.csv("ecosia.csv",sep=";")
+attach(ecosia)
+#devtools::install_github("ellisp/forecastxgb-r-package/pkg") # CRAN release still to come
+#library(forecastxgb)
+total.tree<-ts(ecosia$Number.tree.planted)
+
+ndiffs(total.tree)   
+#Potrebbe bastare una differenza per rendere la serie stazionaria
+#Elimino la componente trend
+total.tree<-diff(total.tree)
+plot(total.tree,type="l")
+#Elimino la componente stagionale
+
+acf(total.tree)
+pacf(total.tree)
+adf.test(total.tree,alternative=c("stationary"))
+total.tree<-diff(total.tree)
+adf.test(total.tree,alternative=c("stationary")) 
+#Abbiamo applicato le differenze seconde per raggiungere la stazionarietà
+
+acf(total.tree)
+pacf(total.tree)
+Box.test(total.tree, type="Ljung-Box")
+#I dati non sono distribuiti indipendentemente,c'è autocorrelazione
+
+#UTILIZZO LE OSSERVAZIONI DA 1 A 64
+
+#Faccio previsione per le osservazioni 59-64 al fine di vedere se 
+#riesco a fittare bene il modello
+ecosia<-read.csv("ecosia.csv",sep=";")
+total.tree<-ecosia$Number.tree.planted
+train.income<-ts(total.tree[1:52])
+test.income<-ts(total.tree[53:58])
+
+#Creo una matrice di ritardi : rolling window
+d2<-matrix(0,nrow=35,ncol=12)
+
+for(i in 1:12){
+  vettore<-vector()
+  vettore<-ecosia$Number.tree.planted[(12+i):(46+i)]
+  d2[,i]<-vettore
+}
+
+dati<-as.data.frame(d2)
+dati.train<-dati[(1:28),]
+dati.test<-dati[(29:34),]
+
+income<-ecosia$Number.tree.planted
+train.income<-income[25:52]
+dati.train$train.income<-train.income
+test.income<-income[53:58]
+dati.test$test.income<-test.income
+
+
+modello.prova<-lm(train.income~.,data = dati.train)
+summ<-summary(lm(train.income~.,data = dati.train));summ
+
+#Con quale valore del pvalue lo confronto?
+#Se lo confrontasis con la misura di Bonferroni allora avrei che 
+#rifiuto Ho:bi = 0 nel caso in cui pvalue = alpha/m dove m è il 
+#numero delle HP.
+
+#Bonferroni
+alpha=0.05
+m=13
+p.value<-summ$coefficients[,4];p.value
+setR = which(p.value <= alpha/m);setR
+
+#Holm
+p.value<-sort(p.value,decreasing = F)
+for(i in 1:13){
+  if(p.value[i]< (alpha/i)){
+    print(i)
+  }
+  else{
+    break
+  }
+}
+
+
+
+#Le variabili più significative sono quelle al periodo 9,10 sono le più 
+#significative. 
+#Per fare le rolling-window è però consigliabile utilizzare anche i le var v11 e V12
+#al fine di rendere consistente la media
+
+fit<-gls(train.income~V9+V10+V11+V12,correlation = corAR1(form = ~3),data=dati.train)
+
+qqnorm(fit$residuals,main = "Normal Q-Q Plot")
+qqline(fit$residuals, datax = FALSE, distribution = qnorm,
+       probs = c(0.25, 0.75), qtype = 7)
+prev<-predict(fit, newdata = dati.test,method="gls")
+
+prev
+plot(test.income,type="l")
+lines(prev,col="red")
+
+#l'idea è quella di creare il seguente modello:
+"
+Yt+1 = Yt-1 + Yt-2 + Yt-3
+Yt+2 = Yt + Yt-1 + Yt-2
+ecc.
+"
+
+d2.new<-dati.test[,c(10,11,12)]
+d2.new$income<-ecosia$Number.tree.planted[53:58]
+
+m0<-gls(income~.,correlation = corAR1(form = ~3),data=d2.new)
+pred<-predict(m0, newdata = d2.new);pred
+
+d3.new<-dati.test[,c(11,12)]
+d3.new$V13<-ecosia$Number.tree.planted[53:58]
+d3.new$pred<-pred
+
+m1<-gls(pred~.,correlation=corAR1(form = ~3),data = d3.new)
+pred1<-predict(m1, newdata = d3.new,method="gls")
+pred1
+
+d4.new<-as.data.frame(dati.test[,12])
+d4.new$V13<-ecosia$Number.tree.planted[53:58]
+d4.new$pred<-pred
+d4.new$pred1<-pred1
+
+m2<-gls(pred1~.,correlation=corAR1(form = ~3),data = d4.new)
+pred2<-predict(m2, newdata = d4.new,method="gls");pred2
+
+d5.new<-d4.new[,c(2,3,4)]
+d5.new$pred2<-pred2
+
+m3<-gls(pred2~.,correlation=corAR1(form = ~3),data = d5.new)
+pred3<-predict(m3, newdata = d5.new,method="gls");pred3
+
+d6.new<-d5.new[,c(2,3,4)]
+d6.new$pred3<-pred3
+
+m4<-gls(pred3~.,correlation=corAR1(form = ~3),data = d6.new)
+pred4<-predict(m4, newdata = d6.new,method="gls");pred4
+
+d7.new<-d6.new[,c(2,3,4)]
+d7.new$pred4<-pred4
+
+m5<-gls(pred4~.,correlation=corAR1(form = ~3),data = d7.new)
+qqnorm(m5$residuals,main = "Normal Q-Q Plot")
+qqline(m5$residuals, datax = FALSE, distribution = qnorm,
+       probs = c(0.25, 0.75), qtype = 7)
+pred5<-predict(m5, newdata = d7.new,method="gls");pred5
+
+RMSE<-sqrt(sum((pred5-ecosia$Number.tree.planted[59:64])^2));RMSE
+
+```
+
+Il modello *Sliding window with GLS* è quello con RMSE minore dunque utilizzeremo lui per le previsioni finali: 
+
+```{r,warning = FALSE,error = FALSE,message=FALSE}
+train.income<-ts(ecosia$Number.tree.planted[1:50])
+test.income<-ts(ecosia$Number.tree.planted[51:64])
+
+d<-matrix(0,nrow=41,ncol=12)
+
+for(i in 1:12){
+  vettore<-vector()
+  vettore<-ecosia$Number.tree.planted[(12+i):(52+i)]
+  d[,i]<-vettore
+}
+dati<-as.data.frame(d)
+dati.train<-dati[(1:34),]
+dati.test<-dati[(35:40),]
+income<-ecosia$Number.tree.planted
+train.income<-income[25:58]
+dati.train$train.income<-train.income
+test.income<-income[53:58]
+dati.test$test.income<-test.income
+fit<-gls(train.income~.,correlation = corAR1(form = ~3),data=dati.train)
+qqnorm(fit$residuals,main = "Normal Q-Q Plot")
+qqline(fit$residuals, datax = FALSE, distribution = qnorm,
+       probs = c(0.25, 0.75), qtype = 7)
+prev1<-predict(fit, newdata = dati.test,method="gls")
+prev1
+plot(test.income,type="l",ylim = c(600000,900000))
+lines(prev1,col="red")
+
+#l'idea è quella di creare il seguente modello:
+"
+Yt+1 = Yt-1 + Yt-2 + Yt-3
+Yt+2 = Yt + Yt-1 + Yt-2
+ecc.
+"
+dati2.new<-dati.test[,c(10,11,12)]
+dati2.new$income<-ecosia$Number.tree.planted[53:58]
+library(nlme)
+library(MASS)
+m0<-gls(income~.,correlation = corAR1(form = ~3),data=dati2.new)
+prev<-predict(m0, newdata = dati2.new);prev
+dati3.new<-dati.test[,c(11,12)]
+dati3.new$V13<-ecosia$Number.tree.planted[53:58]
+dati3.new$prev<-prev
+m1<-gls(prev~.,correlation=corAR1(form = ~3),data = dati3.new)
+prev1<-predict(m1, newdata = dati3.new,method="gls")
+prev1
+dati4.new<-as.data.frame(dati.test[,12])
+dati4.new$V13<-ecosia$Number.tree.planted[53:58]
+dati4.new$prev<-prev
+dati4.new$prev1<-prev1
+m2<-gls(prev1~.,correlation=corAR1(form = ~3),data = dati4.new)
+prev2<-predict(m2, newdata = dati4.new,method="gls");prev2
+dati5.new<-dati4.new[,c(2,3,4)]
+dati5.new$prev2<-prev2
+m3<-gls(prev2~.,correlation=corAR1(form = ~3),data = dati5.new)
+prev3<-predict(m3, newdata = dati5.new,method="gls");prev3
+dati6.new<-dati5.new[,c(2,3,4)]
+dati6.new$prev3<-prev3
+m4<-gls(prev3~.,correlation=corAR1(form = ~3),data = dati6.new)
+prev4<-predict(m4, newdata = dati6.new,method="gls");prev4
+dati7.new<-dati6.new[,c(2,3,4)]
+dati7.new$prev4<-prev4
+m5<-gls(prev4~.,correlation=corAR1(form = ~3),data = dati7.new)
+qqnorm(m5$residuals,main = "Normal Q-Q Plot")
+qqline(m5$residuals, datax = FALSE, distribution = qnorm,
+       probs = c(0.25, 0.75), qtype = 7)
+prev5<-predict(m5, newdata = dati7.new,method="gls");prev5
+#Prev5 ha le previsioni finali
+vettore.previsioni.gls<-ecosia$Number.tree.planted
+vettore.previsioni.gls<-c(vettore.previsioni.gls,prev5)
+new.d<-matrix(0,ncol=12,nrow=41)
+new.d<-as.data.frame(new.d)
+for(i in 1:12){
+  vettore<-vector()
+  vettore<-vettore.previsioni.gls[(17+i):(57+i)]
+  new.d[,i]<-vettore
+}
+new.d$prev<-vettore.previsioni.gls[30:70]
+m6<-gls(prev~.,correlation=corAR1(),data = new.d)
+qqnorm(m6$residuals,main = "Normal Q-Q Plot")
+qqline(m6$residuals, datax = FALSE, distribution = qnorm,
+       probs = c(0.25, 0.75), qtype = 7)
+v2<-c(2247908,2077865,1763137,3736624,2116960,1738943)
+V2.final<-c(ecosia$Number.tree.planted[64],v2)
+new.dt1<-as.Date("2013-07-01")
+new.date <- seq(new.dt1, length = 70, by = "month")
+ggplot()+
+  geom_line(aes(x=new.date[1:64], y=ecosia$Number.tree.planted),col="black")+
+  geom_line(aes(x=new.date[64:70], y=V2.final),col="red")+
+  labs(title = "Number of tree planted",caption = "Ecosia source")+
+  xlab("Date")+ ylab("Value in euros")+
+  scale_fill_discrete(name="Factors",aes())+
+  theme(
+    panel.background = element_rect(fill = "transparent", colour = "#33FF66"))
+
+```
+
+
+## Analisi variabile KPI Communication
+
+#### Modello UCM 
+```{r message= FALSE,error=FALSE,warni=FALSE}
+rm(list = ls())
+setwd("C:\\Users\\Utente\\Desktop\\Univerisità\\Statistical learning\\Ecosia\\Financial report\\immagini")
+#SSM
+library(caret)
+library(KFAS)
+library(ggplot2)
+ecosia<-read.csv("ecosia.csv",sep=";")
+attach(ecosia)
+
+kpi.communication<-Spreading.the.Word/Total.income.this.month
+kpi.communication
+
+nas<-which(is.na(kpi.communication) == 1)
+kpi.communication[nas]<-0
+
+plot(kpi.communication,type="l")
+
+library(KFAS)
+kpi.communication<-ts(kpi.communication)
+
+#Creo un vettore data
+dt1<-as.Date("2013-07-01")
+date <- seq(dt1, length = 64, by = "month")
+
+library(KFAS)
+
+
+train.kpi.communication<-kpi.communication[1:58]
+test.kpi.communication<-kpi.communication[59:64]
+
+plot(train.kpi.communication,type="l")
+
+mod1<-SSModel(train.kpi.communication~0+SSMtrend(2,list(0,NA))+SSMseasonal(4,NA,"dummy"),H=NA)
+
+#Funzione update per fissare i parametri ottimi al fine di velocizzare
+#e migliorare la stima
+update1<-function(pars,model){
+  # matrice di covarianza dei disturbi
+  model$Q[1,1,1]<-exp(log(var(train.kpi.communication))/100)
+  model$Q[2,2,1]<-exp(pars[1])  #varianza slope
+  model$Q[3,3,1]<-exp(pars[2])  #varianza stagionalità
+  # varianza dell'errore di osservazione
+  model$H[1,1,1]<-exp(pars[3])  #varianza errore dell' osservazione
+  model
+}
+
+fit1 <- fitSSM(mod1, c(exp(log(var(train.kpi.communication))/100),exp(log(var(train.kpi.communication))/100), exp(log(var(train.kpi.communication))/10)), update1)
+#Converge?
+fit1$optim.out$convergence #Si converge
+
+#Parametri stimati
+dsm1 <- KFS(fit1$model, smoothing = c("state","disturbance","signal"))
+smo1<-KFS(fit1$model,smoothing="disturbance")
+are1 <- rstandard(smo1, "state")
+
+ggplot()+
+  geom_line(aes(x=date[1:58], y=are1[,"level"]),col="#FF3300")+
+  labs(title = "Residual of total income per months",caption = "Ecosia source") +
+  ylab("Residuals") + xlab("Date")
+
+#Quali residui sono anomali?
+ndx<-which.max(abs(are1[,"level"]));ndx
+
+#Generare i residui ausiliari per costruire i t-test per identificare un outlier additivo. Creare una
+#variabile dummy per il residuo ausiliario più estremo.dsm1 <- KFS(fit1$model, smoothing = "disturbance")
+
+#costruiamo il trend smoothed (prima devo calcolare il filtro di Kalman)
+smo1 = KFS(fit1$model, smoothing=c("state","disturbance","sigma"))
+#state:proiezione var di stato su y
+#disturbance : proiezione disturbo delle variabili di stato sulle y
+#sigma : proiezione varianza delle variabili di stato sulle y
+
+#TEST - c'è un cambio di livello improvviso?
+which(abs(are1[,"level"]/sd(are1[,"level"]))>2.57) 
+
+#In 46 inizia ad esserci un cambio di pendenza significativo
+#Nella pos 46 abbiamo un problema, si è creato un dislivello.
+#Cerchiamo di correggere il tutto creando una funzione gradino
+
+#Creo la variabile ramp
+n=length(train.kpi.communication)
+ramp = train.kpi.communication
+ramp[1:(ndx+1)]<-0
+#scriviamo sulla parte dati e non data
+ramp[(ndx+1):n] = 1:(n-ndx+1);ramp
+
+#Stimiamo il modello UCM con in aggiunta la variabile ramp
+mod2 <- SSModel  ( train.kpi.communication~ 0 + ramp + SSMtrend(2,list(NA,NA))
+                   +SSMseasonal(4,NA,"dummy"),H=NA)
+
+update2<-function(pars,model){
+  # matrice di covarianza dei disturbi
+  model$Q[1,1,1]<-exp(log(var(train.kpi.communication))/100)
+  model$Q[2,2,1]<-exp(pars[1])  #varianza slope
+  model$Q[3,3,1]<-exp(pars[2])  #varianza stagionalità
+  # varianza dell'errore di osservazione
+  model$H[1,1,1]<-exp(pars[3])  #varianza errore dell' osservazione
+  model
+}
+
+fit2 = fitSSM(mod2,c(fit1$optim.out$par,2.5),update2)
+
+smo2 = KFS(fit2$model,smoothing="state") #calcola gli eta.hat t/n
+smo2$alphahat[,"ramp"]
+fit2$optim.out$convergence
+
+#La variabile combo è il prodotto tra la variabile ramp e la 
+#sua stima
+combo<-ramp*smo2$alphahat[,"ramp"]
+
+ggplot()+
+  geom_line(aes(x=date[1:58], y=train.kpi.communication),col="#000000")+
+  geom_line(aes(x=date[1:58], y=smo2$alphahat[,"level"]),col="#3366FF")+
+  geom_line(aes(x=date[1:58], y=smo2$alphahat[,"level"]+combo),col="#FF3300")+
+  labs(title = "Fit of the time serie",caption = "Ecosia source") +
+  ylab("Value") + xlab("Date")
+
+#Smoothing
+smo2$alphahat[n,"ramp"] / sqrt(smo2$V[1,1,n]) #test t, la stepa è molto significativo
+
+#Aggiungo 6 NA alla fine della serie e della variabile ramp
+#al fine di poter eseguire previsioni
+train.kpi.communication<-c(train.kpi.communication,rep(NA,6))
+train.kpi.communication<-as.numeric(train.kpi.communication)
+ramp<-c(ramp,c(13,14,15,17,17,18))   #Gli aggiungo i valori significativi
+
+fit1$model$Q
+
+#Ho messo per il livello una varianza pari a 1.314255 che è il valore 
+#della matrice di varianze e covarianze corrispondente al livello
+#nel modello precedente.
+#Inserisco condizioni diffuse per lo slope e 0.0004745618 per la matrice
+#delle var e covar dell'errore
+#Per l' errore ho messo condizioni diffuse (varianza pari a 10^7)
+#poichè non si hanno informazioni a priori.
+mod3<-SSModel(train.kpi.communication~0+ramp+SSMtrend(2,list(0,0.93))
+              +SSMseasonal(4,1,"dummy"),H=0)
+
+fit3 <- fitSSM(mod3, inits = c(0, 0, 0), method = "BFGS")
+fit3$optim.out$convergence  #converge
+smo3<-KFS(mod3, filtering = c("state", "signal", "disturbance"), smoothing = c("state", "signal","disturbance", "none"))
+
+#Previsioni / stima del test set
+a<-smo3$m
+new.dt1<-as.Date("2013-07-01")
+new.date <- seq(dt1, length = 64, by = "month")
+
+for(i in 1:length(a)){
+  if (a[i] < 0) { a[i] = 0}
+}
+
+plot(train.kpi.communication,type="l",ylim=c(0,0.5))
+lines(a,col="red")
+
+
+new.a<-a[59:64];new.a
+new.kpi<-train.kpi.communication
+new.kpi[59:64]<-new.a
+plot(new.kpi,type="l",ylim=c(0,0.5))
+abline(v=59,col="red")
+lines(train.kpi.communication,col="blue")
+
+
+
+#Da 59 a 64 SSM
+v1<-c(0.11932919,0.11158727,0.14892908,0.08865491,0.14489212,0.13715023)
+
+rmse.train<-sqrt(sum((v1-test.kpi.communication)^2));rmse.train
+```
+
+#### Modello Sliding Window with GLS
+```{r message = FALSE,warning = FALSE,error = FALSE}
+library(tseries)
+library(nlme)
+library(caret)
+library(forecast)
+ecosia<-read.csv("ecosia.csv",sep=";")
+attach(ecosia)
+#devtools::install_github("ellisp/forecastxgb-r-package/pkg") # CRAN release still to come
+#library(forecastxgb)
+dt1<-as.Date("2013-07-01")
+date <- seq(dt1, length = 64, by = "month")
+kpi.communication<-Spreading.the.Word/Total.income.this.month
+plot(kpi.communication,type="l") 
+
+v<-which(is.na(kpi.communication) == T)
+kpi.communication[v]<-0
+
+train.kpi.communication<-kpi.communication[1:58]
+test.kpi<-kpi.communication[59:64]
+#UTILIZZO LE OSSERVAZIONI DA 1 A 64
+
+#Faccio previsione per le osservazioni 59-64 al fine di vedere se 
+#riesco a fittare bene il modello
+
+#Creo una matrice di ritardi : rolling window
+d2<-matrix(0,nrow=34,ncol=12)
+
+for(i in 1:12){
+  vettore<-vector()
+  vettore<-kpi.communication[(12+i):(45+i)]
+  d2[,i]<-vettore
+}
+
+dati<-as.data.frame(d2)
+dati.train<-dati[(1:28),]
+dati.test<-dati[(29:34),]
+train.kpi<-kpi.communication[25:52]
+
+dati.train$train.kpi.communication<-train.kpi
+test.kpi<-kpi.communication[53:58]
+dati.test$test.kpi.communication<-test.kpi
+modello.prova<-lm(train.kpi~V6+V7+V8+V9+V10+V11+V12,data = dati.train)
+summ<-summary(lm(train.kpi~V6+V7+V8+V9+V10+V11+V12,data = dati.train));summ
+modello.prova<-gls(train.kpi~V6+V7+V8+V9+V10+V11+V12,correlation = corAR1(),data = dati.train)
+summ<-summary(lm(train.kpi~V6+V7+V8+V9+V10+V11+V12,correlation = corAR1(),data = dati.train));summ
+#Con quale valore del pvalue lo confronto?
+#Se lo confrontasis con la misura di Bonferroni allora avrei che 
+#rifiuto Ho:bi = 0 nel caso in cui pvalue = alpha/m dove m è il 
+#numero delle HP.
+
+#Bonferroni
+alpha=0.05
+m=7
+p.value<-summ$coefficients[,4]
+setR = which(p.value <= alpha/m);setR
+
+#Holm
+p.value<-sort(p.value,decreasing = F)
+for(i in 1:13){
+  if(p.value[i]< (alpha/i)){
+    print(i)
+  }
+  else{
+    break
+  }
+}
+
+#SOlo V12 sembra essere significativa
+fit<-gls(train.kpi.communication~V11+V12,correlation = corAR1(form = ~3),data=dati.train)
+qqnorm(fit$residuals,main = "Normal Q-Q Plot")
+qqline(fit$residuals, datax = FALSE, distribution = qnorm,
+       probs = c(0.25, 0.75), qtype = 7)
+prev<-predict(fit, newdata = dati.test,method="gls")
+
+prev
+plot(test.kpi,type="l")
+lines(prev,col="red")
+
+#l'idea è quella di creare il seguente modello:
+"
+Yt+1 = Yt-1 + Yt-2 + Yt-3
+Yt+2 = Yt + Yt-1 + Yt-2
+ecc.
+"
+d2.new<-dati.test[,c(10,11,12)]
+d2.new$kpi.communication<-kpi.communication[53:58]
+m0<-gls(kpi.communication~.,correlation = corAR1(form = ~3),data=d2.new)
+pred<-predict(m0, newdata = d2.new);pred
+d3.new<-dati.test[,c(11,12)]
+d3.new$V13<-kpi.communication[53:58]
+d3.new$pred<-pred
+m1<-gls(pred~.,correlation=corAR1(form = ~3),data = d3.new)
+pred1<-predict(m1, newdata = d3.new,method="gls")
+pred1
+d4.new<-as.data.frame(dati.test[,12])
+d4.new$V13<-kpi.communication[53:58]
+d4.new$pred<-pred
+d4.new$pred1<-pred1
+m2<-gls(pred1~.,correlation=corAR1(form = ~3),data = d4.new)
+pred2<-predict(m2, newdata = d4.new,method="gls");pred2
+d5.new<-d4.new[,c(2,3,4)]
+d5.new$pred2<-pred2
+m3<-gls(pred2~.,correlation=corAR1(form = ~3),data = d5.new)
+pred3<-predict(m3, newdata = d5.new,method="gls");pred3
+d6.new<-d5.new[,c(2,3,4)]
+d6.new$pred3<-pred3
+m4<-gls(pred3~.,correlation=corAR1(form = ~3),data = d6.new)
+pred4<-predict(m4, newdata = d6.new,method="gls");pred4
+d7.new<-d6.new[,c(2,3,4)]
+d7.new$pred4<-pred4
+m5<-gls(pred4~.,correlation=corAR1(form = ~3),data = d7.new)
+qqnorm(m5$residuals,main = "Normal Q-Q Plot")
+qqline(m5$residuals, datax = FALSE, distribution = qnorm,
+       probs = c(0.25, 0.75), qtype = 7)
+pred5<-predict(m5, newdata = d7.new,method="gls");pred5
+#0.11416566 0.10533226 0.10642491 0.09711346 0.11446374 0.10599458
+v1<-c(0.11416566,0.10533226,0.10642491,0.09711346,0.11446374,0.10599458)
+sqrt(sum((v1-kpi.communication[59:64])^2))
+```
+
+Il modello SSM ha ottenuto un RMSE più piccolo dunque verrà utilizzato per le previsioni finali.
+```{r message = FALSE,error = FALSE,warning=FALSE}
+rm(list=ls())
+
+ecosia<-read.csv("ecosia.csv",sep=";")
+attach(ecosia)
+
+dt1<-as.Date("2013-07-01")
+date <- seq(dt1, length = 64, by = "month")
+
+kpi.communication<-Spreading.the.Word/Total.income.this.month
+kpi.communication
+
+nas<-which(is.na(kpi.communication) == 1)
+kpi.communication[nas]<-0
+plot(kpi.communication,type="l")
+
+"
+#Essendoci un outlier evidente, ai fini della stima sostituiamo tale valore con
+#la media dei 3 periodi precedenti e dei 3 periodi successivi
+which.max(kpi.communication)
+media<-(sum(kpi.communication[57:59]) + sum(kpi.communication[61:63]))/6
+kpi.communication[60]<-media"
+
+library(KFAS)
+kpi.communication<-ts(kpi.communication)
+
+plot(kpi.communication,type="l")
+
+mod1<-SSModel(kpi.communication~0+SSMtrend(2,list(0,NA))+SSMseasonal(4,NA,"dummy"),H=NA)
+
+#Funzione update per fissare i parametri ottimi al fine di velocizzare
+#e migliorare la stima
+update1<-function(pars,model){
+  # matrice di covarianza dei disturbi
+  model$Q[1,1,1]<-exp(log(var(kpi.communication))/100)
+  model$Q[2,2,1]<-exp(pars[1])  #varianza slope
+  model$Q[3,3,1]<-exp(pars[2])  #varianza stagionalità
+  # varianza dell'errore di osservazione
+  model$H[1,1,1]<-exp(pars[3])  #varianza errore dell' osservazione
+  model
+}
+
+fit1 <- fitSSM(mod1, c(exp(log(var(kpi.communication))/100),exp(log(var(kpi.communication))/100), exp(log(var(kpi.communication))/10)), update1)
+#Converge?
+fit1$optim.out$convergence #Si converge
+
+#Parametri stimati
+dsm1 <- KFS(fit1$model, smoothing = c("state","disturbance","signal"))
+smo1<-KFS(fit1$model,smoothing="disturbance")
+are1 <- rstandard(smo1, "state")
+
+ggplot()+
+  geom_line(aes(x=date[1:64], y=are1[,"level"]),col="#FF3300")+
+  labs(title = "Residual of total income per months",caption = "Ecosia source") +
+  ylab("Residuals") + xlab("Date")
+
+#Quali residui sono anomali?
+ndx<-which.max(abs(are1[,"level"]));ndx
+
+#Generare i residui ausiliari per costruire i t-test per identificare un outlier additivo. Creare una
+#variabile dummy per il residuo ausiliario più estremo.dsm1 <- KFS(fit1$model, smoothing = "disturbance")
+
+#costruiamo il trend smoothed (prima devo calcolare il filtro di Kalman)
+smo1 = KFS(fit1$model, smoothing=c("state","disturbance","sigma"))
+#state:proiezione var di stato su y
+#disturbance : proiezione disturbo delle variabili di stato sulle y
+#sigma : proiezione varianza delle variabili di stato sulle y
+
+#TEST - c'è un cambio di livello improvviso?
+which(abs(are1[,"level"]/sd(are1[,"level"]))>2.57) 
+ndx<-46
+#In 46 e 59 inizia ad esserci un cambio di pendenza significativo
+#Nella pos 46 e 59 abbiamo un problema, si è creato un dislivello.
+#Cerchiamo di correggere il tutto creando una funzione gradino
+
+#Creo la variabile ramp
+n=length(kpi.communication)
+ramp = kpi.communication
+ramp[1:(ndx+1)]<-0
+#scriviamo sulla parte dati e non data
+ramp[(ndx+1):n] = 1:(n-ndx+1);ramp
+
+#Stimiamo il modello UCM con in aggiunta la variabile ramp
+mod2 <- SSModel  ( kpi.communication~ 0 + ramp + SSMtrend(2,list(NA,NA))
+                   +SSMseasonal(4,NA,"dummy"),H=NA)
+
+update2<-function(pars,model){
+  # matrice di covarianza dei disturbi
+  model$Q[1,1,1]<-exp(log(var(kpi.communication))/100)
+  model$Q[2,2,1]<-exp(pars[1])  #varianza slope
+  model$Q[3,3,1]<-exp(pars[2])  #varianza stagionalità
+  # varianza dell'errore di osservazione
+  model$H[1,1,1]<-exp(pars[3])  #varianza errore dell' osservazione
+  model
+}
+
+fit2 = fitSSM(mod2,c(fit1$optim.out$par,2.5),update2)
+
+smo2 = KFS(fit2$model,smoothing="state") #calcola gli eta.hat t/n
+smo2$alphahat[,"ramp"]
+fit2$optim.out$convergence
+
+#La variabile combo è il prodotto tra la variabile ramp e la 
+#sua stima
+combo<-ramp*smo2$alphahat[,"ramp"]
+
+ggplot()+
+  geom_line(aes(x=date[1:64], y=kpi.communication),col="#000000")+
+  geom_line(aes(x=date[1:64], y=smo2$alphahat[,"level"]),col="#3366FF")+
+  geom_line(aes(x=date[1:64], y=smo2$alphahat[,"level"]+combo),col="#FF3300")+
+  labs(title = "Fit of the time serie",caption = "Ecosia source") +
+  ylab("Value") + xlab("Date")
+
+#Smoothing
+smo2$alphahat[n,"ramp"] / sqrt(smo2$V[1,1,n]) #test t, la stepa è molto significativo
+
+#Aggiungo 6 NA alla fine della serie e della variabile ramp
+#al fine di poter eseguire previsioni
+kpi.communication<-c(kpi.communication,rep(NA,6))
+kpi.communication<-as.numeric(kpi.communication)
+ramp<-c(ramp,c(25,26,27,28,29,30))   #Gli aggiungo i valori significativi
+
+fit1$model$Q
+
+#Ho messo per il livello una varianza pari a 1.314255 che è il valore 
+#della matrice di varianze e covarianze corrispondente al livello
+#nel modello precedente.
+#Inserisco condizioni diffuse per lo slope e 0.0004745618 per la matrice
+#delle var e covar dell'errore
+#Per l' errore ho messo condizioni diffuse (varianza pari a 10^7)
+#poichè non si hanno informazioni a priori.
+mod3<-SSModel(kpi.communication~0+ramp+SSMtrend(2,list(0,0.94))
+              +SSMseasonal(4,10^7,"dummy"),H=0.05)
+
+fit3 <- fitSSM(mod3, inits = c(0, 0, 0), method = "BFGS")
+fit3$optim.out$convergence  #converge
+smo3<-KFS(mod3, filtering = c("state", "signal", "disturbance"), smoothing = c("state", "signal","disturbance", "none"))
+
+#Previsioni / stima del test set
+a<-smo3$m
+new.dt1<-as.Date("2013-07-01")
+new.date <- seq(dt1, length = 64, by = "month")
+
+plot(kpi.communication,type="l",ylim=c(0,0.5))
+lines(a,col="red")
+
+new.a<-vector()
+new.a<-kpi.communication[64]
+new.a<-c(new.a,a[65:70])
+kpi.communication<-Spreading.the.Word/Total.income.this.month
+nas<-which(is.na(kpi.communication) == 1)
+kpi.communication[nas]<-0
+#Da SSM
+V.communication<-c(0.1237397,0.1990617,0.2052313,0.3788137,0.1508191,0.2261411)
+V.communication<-c(kpi.communication[64],V.communication)
+new.dt1<-as.Date("2013-07-01")
+new.date <- seq(new.dt1, length = 70, by = "month")
+ggplot()+
+  geom_line(aes(x=new.date[1:64], y=kpi.communication),col="#FF9900")+
+  geom_line(aes(x=new.date[64:70], y=V.communication),col="red")+
+  labs(title = "Spreading the world",caption = "Ecosia source")+
+  xlab("Date")+ ylab("Value in euros")+
+  scale_fill_discrete(name="Factors",aes())+
+  theme(
+    panel.background = element_rect(fill = "transparent", colour = "#33FF66"))
+
+```
+
+## Analisi variabile KPI Cost For Tree
+
+#### Modello UCM 
+
+```{r message = FALSE, error = FALSE, warning = FALSE}
+rm(list = ls())
+library(KFAS)
+library(ggplot2)
+ecosia<-read.csv("ecosia.csv",sep=";")
+attach(ecosia)
+
+#Creo un vettore data
+dt1<-as.Date("2013-07-01")
+date <- seq(dt1, length = 64, by = "month")
+
+kpi.tree.for.euro.earned<-Number.tree.planted/Investiment.on.tree.planting
+plot(kpi.tree.for.euro.earned,type="l")
+kpi.tree.for.euro.earned<-ts(kpi.tree.for.euro.earned)
+train.tree.kpi<-kpi.tree.for.euro.earned[1:58]
+test.kpi<-kpi.tree.for.euro.earned[59:64]
+plot(train.tree.kpi,type="l")
+mod1<-SSModel(train.tree.kpi~0+SSMtrend(2,list(0,NA))+SSMseasonal(4,NA,"dummy"),H=NA)
+#Funzione update per fissare i parametri ottimi al fine di velocizzare
+#e migliorare la stima
+update1<-function(pars,model){
+  # matrice di covarianza dei disturbi
+  model$Q[1,1,1]<-exp(log(var(train.tree.kpi))/100)
+  model$Q[2,2,1]<-exp(pars[1])  #varianza slope
+  model$Q[3,3,1]<-exp(pars[2])  #varianza stagionalità
+  # varianza dell'errore di osservazione
+  model$H[1,1,1]<-exp(pars[3])  #varianza errore dell' osservazione
+  model
+}
+
+fit1 <- fitSSM(mod1, c(exp(log(var(train.tree.kpi))/100),exp(log(var(train.tree.kpi))/100), exp(log(var(train.tree.kpi))/10)), update1)
+#Converge?
+fit1$optim.out$convergence #Si converge
+
+#Parametri stimati
+dsm1 <- KFS(fit1$model, smoothing = c("state","disturbance","signal"))
+smo1<-KFS(fit1$model,smoothing="disturbance")
+are1 <- rstandard(smo1, "state")
+ggplot()+
+  geom_line(aes(x=date[1:58], y=are1[,"level"]),col="#FF3300")+
+  labs(title = "Residual of total income per months",caption = "Ecosia source") +
+  ylab("Residuals") + xlab("Date")
+
+#Quali residui sono anomali?
+ndx<-which.max(abs(are1[,"level"]));ndx
+
+#Generare i residui ausiliari per costruire i t-test per identificare un outlier additivo. Creare una
+#variabile dummy per il residuo ausiliario più estremo.dsm1 <- KFS(fit1$model, smoothing = "disturbance")
+
+#costruiamo il trend smoothed (prima devo calcolare il filtro di Kalman)
+smo1 = KFS(fit1$model, smoothing=c("state","disturbance","sigma"))
+#state:proiezione var di stato su y
+#disturbance : proiezione disturbo delle variabili di stato sulle y
+#sigma : proiezione varianza delle variabili di stato sulle y
+
+#TEST - c'è un cambio di livello improvviso?
+which(abs(are1[,"level"]/sd(are1[,"level"]))>2.57) 
+
+#In 46 inizia ad esserci un cambio di pendenza significativo
+#Nella pos 46 abbiamo un problema, si è creato un dislivello.
+#Cerchiamo di correggere il tutto creando una funzione gradino
+
+#Creo la variabile ramp
+n=length(train.tree.kpi)
+ramp = train.tree.kpi
+ramp[1:(ndx+1)]<-0
+#scriviamo sulla parte dati e non data
+ramp[(ndx+1):n] = 1:(n-ndx+1);ramp
+
+#Stimiamo il modello UCM con in aggiunta la variabile ramp
+mod2 <- SSModel  ( train.tree.kpi~ 0 + ramp + SSMtrend(2,list(NA,NA))
+                   +SSMseasonal(4,NA,"dummy"),H=NA)
+
+update2<-function(pars,model){
+  # matrice di covarianza dei disturbi
+  model$Q[1,1,1]<-exp(log(var(train.tree.kpi))/100)
+  model$Q[2,2,1]<-exp(pars[1])  #varianza slope
+  model$Q[3,3,1]<-exp(pars[2])  #varianza stagionalità
+  # varianza dell'errore di osservazione
+  model$H[1,1,1]<-exp(pars[3])  #varianza errore dell' osservazione
+  model
+}
+
+fit2 = fitSSM(mod2,c(fit1$optim.out$par,2.5),update2)
+smo2 = KFS(fit2$model,smoothing="state") #calcola gli eta.hat t/n
+smo2$alphahat[,"ramp"]
+fit2$optim.out$convergence
+
+#La variabile combo è il prodotto tra la variabile ramp e la 
+#sua stima
+combo<-ramp*smo2$alphahat[,"ramp"]
+ggplot()+
+  geom_line(aes(x=date[1:58], y=train.tree.kpi),col="#000000")+
+  geom_line(aes(x=date[1:58], y=smo2$alphahat[,"level"]),col="#3366FF")+
+  geom_line(aes(x=date[1:58], y=smo2$alphahat[,"level"]+combo),col="#FF3300")+
+  labs(title = "Fit of the time serie",caption = "Ecosia source") +
+  ylab("Value") + xlab("Date")
+
+#Smoothing
+smo2$alphahat[n,"ramp"] / sqrt(smo2$V[1,1,n]) #test t, la stepa è molto significativo
+
+#Aggiungo 6 NA alla fine della serie e della variabile ramp
+#al fine di poter eseguire previsioni
+train.tree.kpi<-c(train.tree.kpi,rep(NA,10))
+train.tree.kpi<-as.numeric(train.tree.kpi)
+ramp<-c(ramp,rep(1,10))   #Gli aggiungo i valori significativi
+
+fit1$model$Q
+
+#Ho messo per il livello una varianza pari a 1.314255 che è il valore 
+#della matrice di varianze e covarianze corrispondente al livello
+#nel modello precedente.
+#Inserisco condizioni diffuse per lo slope e 0.0004745618 per la matrice
+#delle var e covar dell'errore
+#Per l' errore ho messo condizioni diffuse (varianza pari a 10^7)
+#poichè non si hanno informazioni a priori.
+mod3<-SSModel(train.tree.kpi~0+ramp+SSMtrend(2,list(0,0.99))
+              +SSMseasonal(4,10^7,"dummy"),H=0)
+
+fit3 <- fitSSM(mod3, inits = c(0, 0, 0), method = "BFGS")
+fit3$optim.out$convergence  #converge
+smo3<-KFS(mod3, filtering = c("state", "signal", "disturbance"), smoothing = c("state", "signal","disturbance", "none"))
+
+#Previsioni / stima del test set
+a<-smo3$m
+new.dt1<-as.Date("2013-07-01")
+new.date <- seq(dt1, length = 64, by = "month")
+
+plot(train.tree.kpi,type="l",ylim=c(0,10))
+lines(a,col="red")
+
+new.a<-a[59:64];new.a
+new.kpi<-train.tree.kpi
+new.kpi[59:64]<-new.a
+plot(new.kpi,type="l",ylim=c(0,10))
+abline(v=59,col="red")
+lines(train.tree.kpi,col="blue")
+
+#Da 59 a 64 SSM
+v1<-c(2.737114,3.618931,3.379844,3.117647,2.966984,3.848801)
+
+rmse.train<-sqrt(sum((v1-test.kpi)^2));rmse.train
+
+```
+
+#### Modello Sliding Window with GLS
+
+```{r message = FALSE, warning = FALSE, error=FALSE}
+rm(list = ls())
+
+library(tseries)
+library(nlme)
+library(caret)
+library(forecast)
+ecosia<-read.csv("ecosia.csv",sep=";")
+attach(ecosia)
+#devtools::install_github("ellisp/forecastxgb-r-package/pkg") # CRAN release still to come
+#library(forecastxgb)
+dt1<-as.Date("2013-07-01")
+date <- seq(dt1, length = 64, by = "month")
+
+kpi.tree.for.euro.earned<-Number.tree.planted/Investiment.on.tree.planting
+plot(kpi.tree.for.euro.earned,type="l") 
+
+train.tree.kpi<-kpi.tree.for.euro.earned[1:58]
+test.kpi<-kpi.tree.for.euro.earned[59:64]
+#UTILIZZO LE OSSERVAZIONI DA 1 A 64
+
+#Faccio previsione per le osservazioni 59-64 al fine di vedere se 
+#riesco a fittare bene il modello
+
+#Creo una matrice di ritardi : rolling window
+d2<-matrix(0,nrow=35,ncol=12)
+
+for(i in 1:12){
+  vettore<-vector()
+  vettore<-kpi.tree.for.euro.earned[(12+i):(46+i)]
+  d2[,i]<-vettore
+}
+
+dati<-as.data.frame(d2)
+dati.train<-dati[(1:28),]
+dati.test<-dati[(29:34),]
+
+kpi.tree<-kpi.tree.for.euro.earned
+train.kpi<-kpi.tree[25:52]
+dati.train$train.kpi.tree<-train.kpi
+test.kpi<-kpi.tree[53:58]
+dati.test$test.kpi.tree<-test.kpi
+
+summary(lm(train.kpi.tree~.,data = dati.train))
+#Le variabili più significative sono quelle al periodo 10
+
+fit<-gls(train.kpi.tree~V10+V11,correlation = corAR1(form = ~3),data=dati.train)
+
+qqnorm(fit$residuals,main = "Normal Q-Q Plot")
+qqline(fit$residuals, datax = FALSE, distribution = qnorm,
+       probs = c(0.25, 0.75), qtype = 7)
+prev<-predict(fit, newdata = dati.test,method="gls")
+
+prev
+plot(test.kpi,type="l")
+lines(prev,col="red")
+
+#l'idea è quella di creare il seguente modello:
+"
+Yt+1 = Yt-1 + Yt-2 + Yt-3
+Yt+2 = Yt + Yt-1 + Yt-2
+ecc.
+"
+
+d2.new<-dati.test[,c(10,11,12)]
+d2.new$kpi.tree<-kpi.tree.for.euro.earned[53:58]
+
+m0<-gls(kpi.tree~.,correlation = corAR1(form = ~3),data=d2.new)
+pred<-predict(m0, newdata = d2.new);pred
+
+d3.new<-dati.test[,c(11,12)]
+d3.new$V13<-kpi.tree.for.euro.earned[53:58]
+d3.new$pred<-pred
+
+m1<-gls(pred~.,correlation=corAR1(form = ~3),data = d3.new)
+pred1<-predict(m1, newdata = d3.new,method="gls")
+pred1
+
+d4.new<-as.data.frame(dati.test[,12])
+d4.new$V13<-kpi.tree.for.euro.earned[53:58]
+d4.new$pred<-pred
+d4.new$pred1<-pred1
+
+m2<-gls(pred1~.,correlation=corAR1(form = ~3),data = d4.new)
+pred2<-predict(m2, newdata = d4.new,method="gls");pred2
+
+d5.new<-d4.new[,c(2,3,4)]
+d5.new$pred2<-pred2
+
+m3<-gls(pred2~.,correlation=corAR1(form = ~3),data = d5.new)
+pred3<-predict(m3, newdata = d5.new,method="gls");pred3
+
+d6.new<-d5.new[,c(2,3,4)]
+d6.new$pred3<-pred3
+
+m4<-gls(pred3~.,correlation=corAR1(form = ~3),data = d6.new)
+pred4<-predict(m4, newdata = d6.new,method="gls");pred4
+
+d7.new<-d6.new[,c(2,3,4)]
+d7.new$pred4<-pred4
+
+m5<-gls(pred4~.,correlation=corAR1(form = ~3),data = d7.new)
+qqnorm(m5$residuals,main = "Normal Q-Q Plot")
+qqline(m5$residuals, datax = FALSE, distribution = qnorm,
+       probs = c(0.25, 0.75), qtype = 7)
+pred5<-predict(m5, newdata = d7.new,method="gls");pred5
+
+sqrt(sum((pred5-kpi.tree.for.euro.earned[59:64])^2))
+#15.38246
+
+```
+
+
+L'RMSE calcolato sul modello *Sliding window with GLS* è più piccolo di quello calcolato sul modello UCM, verrà dunque utilizzato questo metodo per calcolare le previsioni finali.
+
+```{r message = FALSE, warning = FALSE, error=FALSE}
+rm(list=ls())
+
+ecosia<-read.csv("ecosia.csv",sep=";")
+attach(ecosia)
+kpi.tree.for.euro.earned<-Number.tree.planted/Investiment.on.tree.planting
+#Creo un vettore data
+dt1<-as.Date("2013-07-01")
+date <- seq(dt1, length = 64, by = "month")
+
+#Essendoci un outlier evidente, ai fini della stima sostituiamo tale valore con
+#la media dei 3 periodi precedenti e dei 3 periodi successivi
+which.max(kpi.tree.for.euro.earned)
+media<-(sum(kpi.tree.for.euro.earned[57:59]) + sum(kpi.tree.for.euro.earned[61:63]))/6
+kpi.tree.for.euro.earned[60]<-media
+
+train.kpi.tree<-ts(kpi.tree.for.euro.earned[1:50])
+test.kpi.tree<-ts(kpi.tree.for.euro.earned[51:64])
+
+d<-matrix(0,nrow=41,ncol=12)
+
+for(i in 1:12){
+  vettore<-vector()
+  vettore<-kpi.tree.for.euro.earned[(12+i):(52+i)]
+  d[,i]<-vettore
+}
+
+
+dati<-as.data.frame(d)
+dati.train<-dati[(1:34),]
+dati.test<-dati[(35:40),]
+
+
+train.kpi.tree<-kpi.tree.for.euro.earned[25:58]
+dati.train$train.kpi.tree<-train.kpi.tree
+test.kpi.tree<-kpi.tree.for.euro.earned[53:58]
+dati.test$test.kpi.tree<-test.kpi.tree
+
+
+fit<-gls(train.kpi.tree~.,correlation = corAR1(form = ~3),data=dati.train)
+
+qqnorm(fit$residuals,main = "Normal Q-Q Plot")
+qqline(fit$residuals, datax = FALSE, distribution = qnorm,
+       probs = c(0.25, 0.75), qtype = 7)
+prev1<-predict(fit, newdata = dati.test,method="gls")
+
+prev1
+plot(test.kpi.tree,type="l",ylim = c(600000,900000))
+lines(prev1,col="red")
+
+#l'idea è quella di creare il seguente modello:
+"
+Yt+1 = Yt-1 + Yt-2 + Yt-3
+Yt+2 = Yt + Yt-1 + Yt-2
+ecc.
+"
+
+dati2.new<-dati.test[,c(10,11,12)]
+dati2.new$kpi.tree<-kpi.tree.for.euro.earned[53:58]
+
+
+library(nlme)
+library(MASS)
+m0<-gls(kpi.tree~.,correlation = corAR1(form = ~3),data=dati2.new)
+prev<-predict(m0, newdata = dati2.new);prev
+
+dati3.new<-dati.test[,c(11,12)]
+dati3.new$V13<-kpi.tree.for.euro.earned[53:58]
+dati3.new$prev<-prev
+
+m1<-gls(prev~.,correlation=corAR1(form = ~3),data = dati3.new)
+prev1<-predict(m1, newdata = dati3.new,method="gls")
+prev1
+
+dati4.new<-as.data.frame(dati.test[,12])
+dati4.new$V13<-kpi.tree.for.euro.earned[53:58]
+dati4.new$prev<-prev
+dati4.new$prev1<-prev1
+
+m2<-gls(prev1~.,correlation=corAR1(form = ~3),data = dati4.new)
+prev2<-predict(m2, newdata = dati4.new,method="gls");prev2
+
+dati5.new<-dati4.new[,c(2,3,4)]
+dati5.new$prev2<-prev2
+
+m3<-gls(prev2~.,correlation=corAR1(form = ~3),data = dati5.new)
+prev3<-predict(m3, newdata = dati5.new,method="gls");prev3
+
+dati6.new<-dati5.new[,c(2,3,4)]
+dati6.new$prev3<-prev3
+
+m4<-gls(prev3~.,correlation=corAR1(form = ~3),data = dati6.new)
+prev4<-predict(m4, newdata = dati6.new,method="gls");prev4
+
+dati7.new<-dati6.new[,c(2,3,4)]
+dati7.new$prev4<-prev4
+
+m5<-gls(prev4~.,correlation=corAR1(form = ~3),data = dati7.new)
+qqnorm(m5$residuals,main = "Normal Q-Q Plot")
+qqline(m5$residuals, datax = FALSE, distribution = qnorm,
+       probs = c(0.25, 0.75), qtype = 7)
+prev5<-predict(m5, newdata = dati7.new,method="gls");prev5
+
+#Prev5 ha le previsioni finali
+
+vettore.previsioni.gls<-kpi.tree.for.euro.earned
+vettore.previsioni.gls<-c(vettore.previsioni.gls,prev5)
+
+
+new.d<-matrix(0,ncol=12,nrow=41)
+new.d<-as.data.frame(new.d)
+for(i in 1:12){
+  vettore<-vector()
+  vettore<-vettore.previsioni.gls[(17+i):(57+i)]
+  new.d[,i]<-vettore
+}
+new.d$prev<-vettore.previsioni.gls[30:70]
+
+m6<-gls(prev~.,correlation=corAR1(),data = new.d)
+qqnorm(m6$residuals,main = "Normal Q-Q Plot")
+qqline(m6$residuals, datax = FALSE, distribution = qnorm,
+       probs = c(0.25, 0.75), qtype = 7)
+
+plot(vettore.previsioni.gls,type="l")
+abline(v=64,col="red")
+
+vettore.previsioni.gls
+#6.5677002 4.3188434 4.7592627 8.4335875 6.7913873 5.2303932
+
+cost_for_tree<-ecosia$Number.tree.planted/ecosia$Investiment.on.tree.planting
+v2<-c(6.5677002,4.3188434,4.7592627,8.4335875,6.7913873,5.2303932)
+V2.final<-c(cost_for_tree[64],v2)
+
+new.dt1<-as.Date("2013-07-01")
+new.date <- seq(new.dt1, length = 70, by = "month")
+
+ggplot()+
+  geom_line(aes(x=new.date[1:64], y=cost_for_tree),col="black")+
+  geom_line(aes(x=new.date[64:70], y=V2.final),col="red")+
+  labs(title = "Tree planted per euros earned",caption = "Ecosia source")+
+  xlab("Date")+ ylab("Value in euros")+
+  scale_fill_discrete(name="Factors",aes())+
+  theme(
+    panel.background = element_rect(fill = "transparent", colour = "#33FF66"))
+
+
+```
+
+Basta un piccolo sguardo per notare come Ecosia stia crescendo giorno dopo giorno sotto ogni punto di vista; ha ancora competitor troppo forti ma questo non esclude il fatto che possa ritagliarsi una fetta nel mercato attuale e continuare a fare del bene!
+
+## Riferimenti
+
+Riferimenti:
+-	https://www.ecosia.org/
+-	https://www.alexa.com/siteinfo/ecosia.org
+-	https://www.alexa.com/siteinfo/google.com
+-	https://www.alexa.com/siteinfo/bing.com
+-	https://www.instagram.com/ecosia/
+-	https://twitter.com/Ecosia
+-	https://bcorporation.net/b-economy
+-	https://twitter.com/SussexOnEcosia
+-	https://ecosia.dropmark.com/369415?page=1
+
